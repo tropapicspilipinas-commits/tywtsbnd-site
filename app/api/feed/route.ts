@@ -17,17 +17,21 @@ export async function GET(req: NextRequest) {
   const supabase = createClient(url, key);
 
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get('type');
+  const type = searchParams.get('type'); // optional 'message' | 'review'
 
   let q = supabase
     .from('submissions')
-    .select('id, content, type, created_at')
+    .select('id, content, type, created_at, status')
+    .eq('status', 'approved')                // only show approved on the wall
     .order('created_at', { ascending: false })
     .limit(100);
 
-  if (type === 'message' || type === 'review') q = q.eq('type', type);
+  if (type === 'message' || type === 'review') {
+    q = q.eq('type', type);
+  }
 
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ items: data || [] });
+
+  return NextResponse.json({ items: data ?? [] });
 }
