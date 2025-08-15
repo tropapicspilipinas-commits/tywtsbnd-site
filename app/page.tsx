@@ -38,7 +38,8 @@ export default function Page() {
       if (!res.ok) throw new Error('submit failed');
       if (kind === 'message') setMsg(''); else setRev('');
       await fetchFeed();
-      alert('Sent. Thank you.');
+      alert('Sent. Thank you. Your submission is pending approval.
+.');
     } catch {
       alert('Submission failed. Try again.');
     } finally {
