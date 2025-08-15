@@ -5,33 +5,32 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // read from NEXT_PUBLIC first, fall back to non-public if needed
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    return NextResponse.json({ error: 'env_missing' }, { status: 500 });
-  }
+  // read env (works both locally and on Vercel)
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) return NextResponse.json({ error: 'env_missing' }, { status: 500 });
 
   const supabase = createClient(url, key);
 
   try {
     const { type, text } = await req.json();
-    const allowed = ['message', 'review', 'prompt', 'letter'];
-    if (!allowed.includes(type))
-      return NextResponse.json({ error: 'invalid type' }, { status: 400 });
 
+    // Accept the two buttons from the page and friendly names too
+    const allowed = ['message', 'review', 'prompt', 'letter'];
+    if (!allowed.includes(type)) {
+      return NextResponse.json({ error: 'invalid type' }, { status: 400 });
+    }
     const dbType = type === 'prompt' ? 'message' : type === 'letter' ? 'review' : type;
 
     const content = String(text || '').trim();
-    if (!content || content.length > 2000)
+    if (!content || content.length > 2000) {
       return NextResponse.json({ error: 'invalid text' }, { status: 400 });
+    }
 
+    // 👇 IMPORTANT: set status to 'pending' so it passes the policy
     const { data, error } = await supabase
       .from('submissions')
-      .insert({ type: dbType, content })
+      .insert({ type: dbType, content, status: 'pending' })
       .select('id')
       .single();
 
