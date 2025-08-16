@@ -71,11 +71,11 @@ export default function Home() {
 
         {/* Message box */}
         <section className="mt-8 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-medium">Send your words</h2>
+          <h2 className="text-lg font-medium">Share your unspoken words</h2>
           <textarea
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
-            placeholder="Things you wanted to say but never did…"
+            placeholder="What’s something you wanted to say but never did?"
             rows={4}
             className="mt-3 w-full resize-vertical rounded-xl border border-neutral-300 bg-white p-3 outline-none ring-0 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900"
             data-gramm="false"
@@ -96,11 +96,11 @@ export default function Home() {
 
         {/* Letter box */}
         <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-medium">Send a letter to Geloy</h2>
+          <h2 className="text-lg font-medium">A note to Geloy</h2>
           <textarea
             value={rev}
             onChange={(e) => setRev(e.target.value)}
-            placeholder="Write your letter to Geloy…"
+            placeholder="How does this project affect you? Anything you want to say to Geloy. And if you can, tell him where you are writing from!"
             rows={4}
             className="mt-3 w-full resize-vertical rounded-xl border border-neutral-300 bg-white p-3 outline-none ring-0 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900"
             data-gramm="false"
