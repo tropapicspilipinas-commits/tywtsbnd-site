@@ -1,31 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
-type Item = {
-  id: string;
-  content: string;
-  type: 'message' | 'review';
-  created_at: string;
-  status?: string;
-};
+import { useState } from 'react';
 
 export default function Home() {
   const [msg, setMsg] = useState('');
   const [rev, setRev] = useState('');
-  const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
-
-  async function fetchFeed(type?: 'message' | 'review') {
-    const qs = type ? `?type=${type}` : '';
-    const res = await fetch(`/api/feed${qs}`, { cache: 'no-store' });
-    const data = await res.json();
-    setItems(Array.isArray(data.items) ? data.items : []);
-  }
-
-  useEffect(() => {
-    fetchFeed();
-  }, []);
 
   async function submit(kind: 'message' | 'review') {
     const text = (kind === 'message' ? msg : rev).trim();
@@ -56,7 +36,6 @@ export default function Home() {
       else setRev('');
 
       alert('Sent. Thank you. Your submission is pending approval.');
-      fetchFeed();
     } catch {
       alert('Submission failed. Try again.');
     } finally {
@@ -67,10 +46,17 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900">
       <div className="mx-auto max-w-3xl px-4 py-10">
-        <h1 className="text-2xl font-semibold">Things you wanted to say but never did</h1>
+        <header className="mb-6">
+          <h1 className="text-2xl font-semibold">Things you wanted to say but never did</h1>
+          <nav className="mt-2 text-sm text-neutral-600">
+            <a className="underline hover:no-underline" href="/wall/messages">See Unspoken Words Wall</a>
+            <span className="mx-2">•</span>
+            <a className="underline hover:no-underline" href="/wall/reviews">See Letters Wall</a>
+          </nav>
+        </header>
 
         {/* Message box */}
-        <section className="mt-8 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-medium">Share your unspoken words</h2>
           <textarea
             value={msg}
@@ -117,25 +103,6 @@ export default function Home() {
               Send letter
             </button>
           </div>
-        </section>
-
-        {/* Wall */}
-        <section className="mt-10">
-          <h2 className="text-lg font-medium">Public Wall</h2>
-          {items.length === 0 ? (
-            <p className="mt-3 text-neutral-600">No approved posts yet.</p>
-          ) : (
-            <ul className="mt-4 space-y-4">
-              {items.map((it) => (
-                <li key={it.id} className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-                  <div className="whitespace-pre-wrap">{it.content}</div>
-                  <div className="mt-2 text-xs text-neutral-500">
-                    {it.type} • {new Date(it.created_at).toLocaleString()}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
       </div>
     </main>
