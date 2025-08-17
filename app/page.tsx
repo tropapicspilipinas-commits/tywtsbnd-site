@@ -43,65 +43,107 @@ export default function Home() {
     }
   }
 
+  const Background = () => (
+    <>
+      {/* film night-sky photo (use the same image as the walls, or swap the path) */}
+      <div
+        className="fixed inset-0 -z-20 bg-cover bg-center"
+        style={{ backgroundImage: 'url(/bg/night-sky-film.jpg)' }}
+      />
+      {/* darken + subtle vignette so white text glows nicely */}
+      <div className="fixed inset-0 -z-10 bg-black/60" />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,transparent_0%,transparent_55%,rgba(0,0,0,0.35)_80%,rgba(0,0,0,0.6)_100%)]" />
+    </>
+  );
+
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className="mx-auto max-w-3xl px-4 py-10">
+    <main className="min-h-screen text-white">
+      <Background />
+
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        {/* Header to match walls */}
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold">Things you wanted to say but never did</h1>
-          <nav className="mt-2 text-sm text-neutral-600">
-            <a className="underline hover:no-underline" href="/wall/messages">Unspoken words</a>
+          <h1 className="text-2xl font-semibold drop-shadow-[0_0_14px_rgba(255,255,255,0.35)]">
+            Things you wanted to say but never did
+          </h1>
+          <nav className="mt-1 text-sm text-white/80">
+            <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/messages">
+              Unspoken words
+            </a>
             <span className="mx-2">•</span>
-            <a className="underline hover:no-underline" href="/wall/reviews">Letters to Geloy</a>
+            <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/reviews">
+              Letters to Geloy
+            </a>
           </nav>
         </header>
 
-        {/* Message box */}
-        <section className="mt-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-medium">Share your unspoken words</h2>
+        {/* Unspoken words input */}
+        <section className="space-y-3">
+          <h2 className="text-lg font-medium drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+            Share your unspoken words
+          </h2>
           <textarea
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
             placeholder="What’s something you wanted to say but never did?"
-            rows={4}
-            className="mt-3 w-full resize-vertical rounded-xl border border-neutral-300 bg-white p-3 outline-none ring-0 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900"
+            rows={5}
+            className="w-full rounded-2xl border border-white/30 bg-white/10 p-4 text-white placeholder-white/60 outline-none backdrop-blur
+                       focus:border-white focus:ring-2 focus:ring-white/40"
             spellCheck={false}
             maxLength={2000}
           />
-          <div className="mt-2 flex items-center justify-between text-sm text-neutral-500">
+          <div className="flex items-center justify-between text-sm text-white/70">
             <span>{msg.length}/2000</span>
             <button
               onClick={() => submit('message')}
               disabled={loading}
-              className="rounded-xl bg-black px-4 py-2 text-white disabled:opacity-60"
+              className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-white shadow-sm backdrop-blur
+                         hover:bg-white/15 disabled:opacity-60"
             >
               Submit anonymously
             </button>
           </div>
         </section>
 
-        {/* Letter box */}
-        <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-medium">A note to Geloy</h2>
+        {/* Letters input */}
+        <section className="mt-8 space-y-3">
+          <h2 className="text-lg font-medium drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+            A note to Geloy
+          </h2>
           <textarea
             value={rev}
             onChange={(e) => setRev(e.target.value)}
             placeholder="How does this project affect you? Anything you want to say to Geloy. And if you can, tell him where you are writing from!"
-            rows={4}
-            className="mt-3 w-full resize-vertical rounded-xl border border-neutral-300 bg-white p-3 outline-none ring-0 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900"
+            rows={5}
+            className="w-full rounded-2xl border border-white/30 bg-white/10 p-4 text-white placeholder-white/60 outline-none backdrop-blur
+                       focus:border-white focus:ring-2 focus:ring-white/40"
             spellCheck={false}
             maxLength={2000}
           />
-          <div className="mt-2 flex items-center justify-between text-sm text-neutral-500">
+          <div className="flex items-center justify-between text-sm text-white/70">
             <span>{rev.length}/2000</span>
             <button
               onClick={() => submit('review')}
               disabled={loading}
-              className="rounded-xl bg-black px-4 py-2 text-white disabled:opacity-60"
+              className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-white shadow-sm backdrop-blur
+                         hover:bg-white/15 disabled:opacity-60"
             >
               Send letter
             </button>
           </div>
         </section>
+
+        {/* Quick links (same vibe as walls) */}
+        <div className="mt-10 text-sm text-white/80">
+          <span className="mr-2">Browse the walls:</span>
+          <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/messages">
+            Unspoken words
+          </a>
+          <span className="mx-2">•</span>
+          <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/reviews">
+            Letters to Geloy
+          </a>
+        </div>
       </div>
     </main>
   );
