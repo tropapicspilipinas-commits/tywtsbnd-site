@@ -45,7 +45,7 @@ export default function Home() {
 
   const Background = () => (
     <>
-      {/* film night-sky photo (use the same image as the walls, or swap the path) */}
+      {/* film night-sky photo (same vibe as walls) */}
       <div
         className="fixed inset-0 -z-20 bg-cover bg-center"
         style={{ backgroundImage: 'url(/bg/night-sky-film.jpg)' }}
@@ -61,20 +61,31 @@ export default function Home() {
       <Background />
 
       <div className="mx-auto max-w-5xl px-4 py-8">
-        {/* Header to match walls */}
+        {/* Header with handwritten title image */}
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold drop-shadow-[0_0_14px_rgba(255,255,255,0.35)]">
-            Things you wanted to say but never did
-          </h1>
-          <nav className="mt-1 text-sm text-white/80">
-            <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/messages">
-              Unspoken words
-            </a>
-            <span className="mx-2">•</span>
-            <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/reviews">
-              Letters to Geloy
-            </a>
-          </nav>
+          {/* keep an accessible text h1 for SEO/screen readers */}
+          <h1 className="sr-only">Things you wanted to say but never did</h1>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1">
+              {/* Handwritten title image */}
+              <img
+                src="/handdrawn/title.png"
+                alt="Things you wanted to say but never did"
+                className="h-auto w-full max-w-[760px] drop-shadow-[0_0_16px_rgba(255,255,255,0.35)]"
+              />
+
+              <nav className="mt-2 text-sm text-white/80">
+                <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/messages">
+                  Unspoken words
+                </a>
+                <span className="mx-2">•</span>
+                <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/reviews">
+                  Letters to Geloy
+                </a>
+              </nav>
+            </div>
+          </div>
         </header>
 
         {/* Unspoken words input */}
@@ -133,7 +144,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Quick links (same vibe as walls) */}
+        {/* Quick links */}
         <div className="mt-10 text-sm text-white/80">
           <span className="mr-2">Browse the walls:</span>
           <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/messages">
