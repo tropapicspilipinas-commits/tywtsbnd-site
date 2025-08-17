@@ -6,9 +6,8 @@ import Image from 'next/image';
 export default function Home() {
   const [msg, setMsg] = useState('');
   const [rev, setRev] = useState('');
-  const [bright, setBright] = useState('');
   const [loading, setLoading] = useState(false);
-  const [thanksKind, setThanksKind] = useState<null | 'message' | 'review' | 'bright'>(null);
+  const [thanksKind, setThanksKind] = useState<null | 'message' | 'review'>(null);
 
   // single-line class strings
   const inputClass = "w-full rounded-2xl border border-white/30 bg-white/10 p-4 text-white placeholder-white/60 outline-none backdrop-blur focus:border-white focus:ring-2 focus:ring-white/40";
@@ -16,8 +15,8 @@ export default function Home() {
   const h2Class = "text-lg font-medium drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
   const linkClass = "underline decoration-white/50 underline-offset-4 hover:decoration-white";
 
-  async function submit(kind: 'message' | 'review' | 'bright') {
-    const text = kind === 'message' ? msg.trim() : kind === 'review' ? rev.trim() : bright.trim();
+  async function submit(kind: 'message' | 'review') {
+    const text = kind === 'message' ? msg.trim() : rev.trim();
     if (!text) { setThanksKind(null); return; }
     if (text.length > 2000) { window.alert('Max 2000 characters.'); return; }
 
@@ -32,8 +31,7 @@ export default function Home() {
       if (!res.ok) { window.alert(data?.error || 'Submission failed'); return; }
 
       if (kind === 'message') setMsg('');
-      else if (kind === 'review') setRev('');
-      else setBright('');
+      else setRev('');
 
       setThanksKind(kind);
     } catch {
@@ -63,13 +61,18 @@ export default function Home() {
 
       {/* Thank-you toast */}
       {thanksKind && (
-        <div aria-live="polite" className="fixed left-1/2 top-6 z-50 w-[92%] max-w-md -translate-x-1/2 rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm backdrop-blur shadow-[0_10px_30px_rgba(0,0,0,0.35)] animate-fadeUp">
+        <div
+          aria-live="polite"
+          className="fixed left-1/2 top-6 z-50 w-[92%] max-w-md -translate-x-1/2 rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm backdrop-blur shadow-[0_10px_30px_rgba(0,0,0,0.35)] animate-fadeUp"
+        >
           <div className="flex items-start gap-3">
             <div className="relative h-6 w-6 shrink-0">
               <Image src="/handdrawn/star.png" alt="" fill sizes="24px" className="animate-pop" />
             </div>
             <div className="leading-relaxed">
-              Thank you—your {thanksKind === 'message' ? 'message' : thanksKind === 'review' ? 'letter' : 'note'} was received and is now pending moderation. <a className="underline decoration-white/60 hover:decoration-white" href="/wall/messages">Unspoken words</a> • <a className="underline decoration-white/60 hover:decoration-white" href="/wall/reviews">Letters to Geloy</a> • <a className="underline decoration-white/60 hover:decoration-white" href="/wall/bright">Brighten up someone’s day</a>
+              Thank you—your {thanksKind === 'message' ? 'message' : 'letter'} was received and is now pending moderation.{' '}
+              <a className="underline decoration-white/60 hover:decoration-white" href="/wall/messages">Unspoken words</a>{' '}
+              • <a className="underline decoration-white/60 hover:decoration-white" href="/wall/reviews">Letters to Geloy</a>
             </div>
           </div>
         </div>
@@ -82,12 +85,12 @@ export default function Home() {
             <div className="w-full max-w-[760px]">
               <img src="/handdrawn/title.png" alt="Things you wanted to say but never did" className="h-auto w-full drop-shadow-[0_0_16px_rgba(255,255,255,0.35)]" />
             </div>
+
+            {/* Simple nav */}
             <nav className="mt-1 flex flex-wrap items-center gap-3 text-sm text-white/80">
               <a className={linkClass} href="/wall/messages">Unspoken words</a>
               <span className="opacity-80">•</span>
               <a className={linkClass} href="/wall/reviews">Letters to Geloy</a>
-              <span className="opacity-80">•</span>
-              <a className={linkClass} href="/wall/bright">Brighten up someone’s day</a>
             </nav>
           </div>
         </header>
@@ -112,26 +115,15 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Brighten up someone’s day */}
-        <section className="mt-8 space-y-3">
-          <h2 className={h2Class}>Brighten up someone’s day</h2>
-          <textarea value={bright} onChange={(e) => setBright(e.target.value)} placeholder="Stories of hope, words for someone who might be having a hard time..." rows={5} className={inputClass} spellCheck={false} maxLength={2000} />
-          <div className="flex items-center justify-between text-sm text-white/70">
-            <span>{bright.length}/2000</span>
-            <button onClick={() => submit('bright')} disabled={loading} className={btnClass}>Send encouragement</button>
-          </div>
-        </section>
-
         <div className="mt-10 text-sm text-white/80">
           <span className="mr-2">Browse the walls:</span>
           <a className={linkClass} href="/wall/messages">Unspoken words</a>
           <span className="mx-2">•</span>
           <a className={linkClass} href="/wall/reviews">Letters to Geloy</a>
-          <span className="mx-2">•</span>
-          <a className={linkClass} href="/wall/bright">Brighten up someone’s day</a>
         </div>
       </div>
 
+      {/* tiny animations */}
       <style jsx global>{`
         @keyframes fadeUp { 0% { opacity: 0; transform: translate(-50%, 10px); } 100% { opacity: 1; transform: translate(-50%, 0); } }
         .animate-fadeUp { animation: fadeUp 280ms ease-out; }
