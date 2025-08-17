@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type Item = {
   id: string;
@@ -10,12 +10,16 @@ type Item = {
   status?: string;
 };
 
-type PlacedItem = Item & {
-  x: number;   // %
-  y: number;   // %
+type Placed = {
+  id: string;
+  content: string;
+  created_at: string;
+  x: number;   // px
+  y: number;   // px
   w: number;   // px
+  h: number;   // px (estimated)
   r: number;   // deg
-  z: number;   // z-index
+  z: number;
   dur: number; // s
   delay: number; // s
 };
@@ -23,44 +27,122 @@ type PlacedItem = Item & {
 export default function MessagesWall() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
+  const [placed, setPlaced] = useState<Placed[]>([]);
+  const [canvasH, setCanvasH] = useState(1200);
   const [shuffleKey, setShuffleKey] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  async function fetchFeed() {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/feed?type=message', { cache: 'no-store' });
-      const data = await res.json();
-      setItems(Array.isArray(data.items) ? data.items : []);
-    } catch {
-      setItems([]);
-    } finally {
-      setLoading(false);
+  // 1) Fetch approved messages
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/feed?type=message', { cache: 'no-store' });
+        const data = await res.json();
+        setItems(Array.isArray(data.items) ? data.items : []);
+      } catch {
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  // Helpers
+  const estimateHeight = (text: string, width: number) => {
+    // Approx character width ~7px at our font size
+    const CPL = Math.max(16, Math.floor(width / 7));
+    const lines = Math.max(2, Math.ceil(text.length / CPL));
+    const lineH = 20; // px
+    const padding = 24 + 16; // inner padding + meta line
+    const minH = 90;
+    const maxH = 420;
+    return Math.min(maxH, Math.max(minH, lines * lineH + padding));
+  };
+
+  const chooseWidth = (isNarrow: boolean) => {
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+    return isNarrow ? rand(180, 240) : rand(220, 340);
+  };
+
+  // 2) Lay out collision-free when items or shuffle change & container measured
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const containerW = containerRef.current.clientWidth || 900;
+    const isNarrow = containerW < 640;
+
+    // Precompute widths/heights
+    const withSize = items.map((it) => {
+      const w = chooseWidth(isNarrow);
+      const h = estimateHeight(it.content, w);
+      return { it, w, h };
+    });
+
+    // Compute canvas height from total area (with slack)
+    const totalArea = withSize.reduce((s, x) => s + x.w * x.h, 0);
+    const base = Math.max(900, typeof window !== 'undefined' ? window.innerHeight : 900);
+    const needed = Math.ceil(totalArea / containerW * 1.25);
+    const height = Math.max(base, Math.min(32000, needed)); // cap to be safe
+    setCanvasH(height);
+
+    // Collision-free random placement
+    const placedOut: Placed[] = [];
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+    const intersects = (a: Placed, b: Placed) =>
+      !(
+        a.x + a.w <= b.x ||
+        b.x + b.w <= a.x ||
+        a.y + a.h <= b.y ||
+        b.y + b.h <= a.y
+      );
+
+    for (const row of withSize) {
+      const rDeg = rand(-2.5, 2.5);
+      const z = Math.floor(rand(1, 5));
+      const dur = rand(6, 10);
+      const delay = rand(0, 5);
+
+      // Try many random positions within bounds, avoid overlaps
+      const maxTries = 300;
+      let placedOne: Placed | null = null;
+      for (let t = 0; t < maxTries; t++) {
+        const margin = 8;
+        const x = Math.floor(rand(margin, Math.max(margin, containerW - row.w - margin)));
+        const y = Math.floor(rand(margin, Math.max(margin, height - row.h - margin)));
+        const candidate: Placed = {
+          id: row.it.id,
+          content: row.it.content,
+          created_at: row.it.created_at,
+          x, y, w: row.w, h: row.h, r: rDeg, z, dur, delay,
+        };
+        // Check overlap against already placed
+        if (!placedOut.some((p) => intersects(candidate, p))) {
+          placedOne = candidate;
+          break;
+        }
+      }
+
+      // Fallback: simple stacking if space is dense
+      if (!placedOne) {
+        const y = placedOut.reduce((acc, p) => Math.max(acc, p.y + p.h + 12), 8);
+        placedOne = {
+          id: row.it.id, content: row.it.content, created_at: row.it.created_at,
+          x: 8, y: Math.min(y, height - row.h - 8), w: row.w, h: row.h, r: 0, z: 1, dur, delay,
+        };
+      }
+      placedOut.push(placedOne);
     }
-  }
 
-  useEffect(() => { fetchFeed(); }, []);
-
-  const canvasHeight = useMemo(() => {
-    if (typeof window === 'undefined') return 1200;
-    const base = Math.max(900, window.innerHeight);
-    const extra = Math.min(2400, Math.max(0, (items.length - 8) * 120));
-    return base + extra;
-  }, [items.length, shuffleKey]);
-
-  const placed = useMemo<PlacedItem[]>(() => {
-    const isNarrow = typeof window !== 'undefined' && window.innerWidth < 640;
-    const rand = (min: number, max: number) => min + Math.random() * (max - min);
-    return items.map((it) => ({
-      ...it,
-      x: rand(6, 92),
-      y: rand(4, 96),
-      w: isNarrow ? rand(160, 240) : rand(200, 320),
-      r: rand(-2.5, 2.5),
-      z: Math.floor(rand(1, 5)),
-      dur: rand(6, 10),
-      delay: rand(0, 5),
-    }));
+    setPlaced(placedOut);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, shuffleKey]);
+
+  // Re-run layout on resize (simple)
+  useEffect(() => {
+    const onResize = () => setShuffleKey((k) => k + 1);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900">
@@ -96,28 +178,29 @@ export default function MessagesWall() {
         {(!loading && items.length === 0) ? (
           <p className="text-neutral-600">No approved posts yet for this wall.</p>
         ) : (
-          <div key={shuffleKey} className="relative w-full" style={{ height: canvasHeight }}>
-            {placed.map((it) => (
+          <div ref={containerRef} key={shuffleKey} className="relative w-full" style={{ height: canvasH }}>
+            {placed.map((p) => (
               <article
-                key={it.id}
+                key={p.id}
                 className="absolute select-none rounded-2xl border border-neutral-200 bg-white/95 shadow-lg shadow-black/5 backdrop-blur transition-transform hover:scale-[1.02] hover:shadow-xl"
                 style={{
-                  left: `${it.x}%`,
-                  top: `${it.y}%`,
-                  width: it.w,
-                  zIndex: it.z,
-                  transform: `rotate(${it.r}deg)`,
+                  left: p.x,
+                  top: p.y,
+                  width: p.w,
+                  height: p.h,
+                  zIndex: p.z,
+                  transform: `rotate(${p.r}deg)`,
                 }}
               >
                 <div
-                  className="p-3 sm:p-4 floaty"
-                  style={{ animationDuration: `${it.dur}s`, animationDelay: `${it.delay}s` }}
+                  className="h-full p-3 sm:p-4 floaty"
+                  style={{ animationDuration: `${p.dur}s`, animationDelay: `${p.delay}s` }}
                 >
                   <div className="whitespace-pre-wrap text-[13.5px] leading-relaxed sm:text-sm">
-                    {it.content}
+                    {p.content}
                   </div>
                   <div className="mt-2 text-[10px] text-neutral-500">
-                    {new Date(it.created_at).toLocaleString()}
+                    {new Date(p.created_at).toLocaleString()}
                   </div>
                 </div>
               </article>
