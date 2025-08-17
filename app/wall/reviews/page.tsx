@@ -10,18 +10,16 @@ type Item = {
   status?: string;
 };
 
-type Placed = {
-  id: string;
-  content: string;
-  created_at: string;
-  x: number; y: number; w: number; h: number; r: number; z: number; dur: number; delay: number;
+type Deco = {
+  rot: number;
+  jitterX: number;
+  dur: number;
+  delay: number;
 };
 
 export default function ReviewsWall() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
-  const [placed, setPlaced] = useState<Placed[]>([]);
-  const [canvasH, setCanvasH] = useState(1200);
   const [shuffleKey, setShuffleKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -40,81 +38,49 @@ export default function ReviewsWall() {
     })();
   }, []);
 
+  const layout = useMemo(() => {
+    const W = containerRef.current?.clientWidth ?? 960;
+    let cols = 4;
+    let gap = 24;
+    if (W < 640) { cols = 2; gap = 16; }
+    else if (W < 1024) { cols = 3; gap = 20; }
+    const colW = Math.floor((W - gap * (cols - 1)) / cols);
+    const rowUnit = 8;
+    return { W, cols, gap, colW, rowUnit };
+  }, [containerRef.current?.clientWidth, shuffleKey]);
+
   const estimateHeight = (text: string, width: number) => {
-    const CPL = Math.max(16, Math.floor(width / 7));
-    const lines = Math.max(2, Math.ceil(text.length / CPL));
+    const charsPerLine = Math.max(18, Math.floor(width / 7));
+    const lines = Math.max(2, Math.ceil(text.length / charsPerLine));
     const lineH = 20;
-    const padding = 24 + 16;
-    const minH = 90;
-    const maxH = 460;
-    return Math.min(maxH, Math.max(minH, lines * lineH + padding));
+    const padding = 14 + 14;
+    const timeLine = 16;
+    const minH = 64;
+    const maxH = 520;
+    return Math.min(maxH, Math.max(minH, lines * lineH + padding + timeLine));
   };
 
-  const chooseWidth = (isNarrow: boolean) => {
-    const rand = (a: number, b: number) => a + Math.random() * (b - a);
-    return isNarrow ? rand(190, 270) : rand(230, 360);
-  };
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const containerW = containerRef.current.clientWidth || 900;
-    const isNarrow = containerW < 640;
-
-    const withSize = items.map((it) => {
-      const w = chooseWidth(isNarrow);
-      const h = estimateHeight(it.content, w);
-      return { it, w, h };
-    });
-
-    const totalArea = withSize.reduce((s, x) => s + x.w * x.h, 0);
-    const base = Math.max(900, typeof window !== 'undefined' ? window.innerHeight : 900);
-    const needed = Math.ceil(totalArea / containerW * 1.25);
-    const height = Math.max(base, Math.min(32000, needed));
-    setCanvasH(height);
-
-    const placedOut: Placed[] = [];
-    const rand = (a: number, b: number) => a + Math.random() * (b - a);
-    const intersects = (a: Placed, b: Placed) =>
-      !(
-        a.x + a.w <= b.x ||
-        b.x + b.w <= a.x ||
-        a.y + a.h <= b.y ||
-        b.y + b.h <= a.y
-      );
-
-    for (const row of withSize) {
-      const rDeg = rand(-2.5, 2.5);
-      const z = Math.floor(rand(1, 5));
-      const dur = rand(6, 10);
-      const delay = rand(0, 5);
-
-      let placedOne: Placed | null = null;
-      const maxTries = 300;
-      for (let t = 0; t < maxTries; t++) {
-        const margin = 8;
-        const x = Math.floor(rand(margin, Math.max(margin, containerW - row.w - margin)));
-        const y = Math.floor(rand(margin, Math.max(margin, height - row.h - margin)));
-        const cand: Placed = {
-          id: row.it.id, content: row.it.content, created_at: row.it.created_at,
-          x, y, w: row.w, h: row.h, r: rDeg, z, dur, delay,
-        };
-        if (!placedOut.some((p) => intersects(cand, p))) {
-          placedOne = cand;
-          break;
-        }
-      }
-      if (!placedOne) {
-        const y = placedOut.reduce((acc, p) => Math.max(acc, p.y + p.h + 12), 8);
-        placedOne = {
-          id: row.it.id, content: row.it.content, created_at: row.it.created_at,
-          x: 8, y: Math.min(y, height - row.h - 8), w: row.w, h: row.h, r: 0, z: 1, dur, delay,
-        };
-      }
-      placedOut.push(placedOne);
+  const deco = useMemo<Record<string, Deco>>(() => {
+    const rng = () => Math.random();
+    const out: Record<string, Deco> = {};
+    for (const it of items) {
+      out[it.id] = {
+        rot: (rng() * 3 - 1.5),
+        jitterX: Math.round(rng() * 10 - 5),
+        dur: 6 + rng() * 4,
+        delay: rng() * 5,
+      };
     }
-
-    setPlaced(placedOut);
+    return out;
   }, [items, shuffleKey]);
+
+  const spans = useMemo(() => {
+    return items.map((it) => {
+      const h = estimateHeight(it.content, layout.colW);
+      const span = Math.ceil(h / layout.rowUnit);
+      return { id: it.id, span, estH: h };
+    });
+  }, [items, layout.colW, layout.rowUnit]);
 
   useEffect(() => {
     const onResize = () => setShuffleKey((k) => k + 1);
@@ -156,36 +122,43 @@ export default function ReviewsWall() {
         {(!loading && items.length === 0) ? (
           <p className="text-neutral-600">No approved posts yet for this wall.</p>
         ) : (
-          <div ref={containerRef} key={shuffleKey} className="relative w-full" style={{ height: canvasH }}>
-            {placed.map((p) => (
-              <article
-                key={p.id}
-                className="absolute select-none rounded-2xl border border-neutral-200 bg-white/95 shadow-lg shadow-black/5 backdrop-blur transition-transform hover:scale-[1.02] hover:shadow-xl"
-                style={{
-                  left: p.x,
-                  top: p.y,
-                  width: p.w,
-                  height: p.h,
-                  zIndex: p.z,
-                  transform: `rotate(${p.r}deg)`,
-                }}
-              >
-                <div
-                  className="h-full p-3 sm:p-4 floaty"
-                  style={{ animationDuration: `${p.dur}s`, animationDelay: `${p.delay}s` }}
+          <div
+            ref={containerRef}
+            key={shuffleKey}
+            className="grid"
+            style={{
+              gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
+              gridAutoRows: `${layout.rowUnit}px`,
+              gap: `${layout.gap}px`,
+            }}
+          >
+            {items.map((it) => {
+              const s = spans.find((x) => x.id === it.id)!;
+              const d = deco[it.id];
+              return (
+                <article
+                  key={it.id}
+                  className="relative"
+                  style={{
+                    gridRowEnd: `span ${s.span}`,
+                    transform: `translateX(${d.jitterX}px) rotate(${d.rot}deg)`,
+                  }}
                 >
-                  <div className="whitespace-pre-wrap text-[13.5px] leading-relaxed sm:text-sm">
-                    {p.content}
+                  <div
+                    className="floaty"
+                    style={{ animationDuration: `${d.dur}s`, animationDelay: `${d.delay}s` }}
+                  >
+                    <div className="whitespace-pre-wrap text-[13.5px] leading-relaxed sm:text-sm"
+                         style={{ textShadow: '0 0 1px rgba(0,0,0,0.08)' }}>
+                      {it.content}
+                    </div>
+                    <div className="mt-1 text-[10px] text-neutral-500">
+                      {new Date(it.created_at).toLocaleString()}
+                    </div>
                   </div>
-                  <div className="mt-2 text-[10px] text-neutral-500">
-                    {new Date(p.created_at).toLocaleString()}
-                  </div>
-                </div>
-              </article>
-            ))}
-            <div className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs text-neutral-400">
-              Scroll to see more • Click “Shuffle layout” to rearrange
-            </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
