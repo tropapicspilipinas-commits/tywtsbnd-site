@@ -49,9 +49,9 @@ export default function Home() {
         <header className="mb-6">
           <h1 className="text-2xl font-semibold">Things you wanted to say but never did</h1>
           <nav className="mt-2 text-sm text-neutral-600">
-            <a className="underline hover:no-underline" href="/wall/messages">See Unspoken Words Wall</a>
+            <a className="underline hover:no-underline" href="/wall/messages">Unspoken words</a>
             <span className="mx-2">•</span>
-            <a className="underline hover:no-underline" href="/wall/reviews">See Letters Wall</a>
+            <a className="underline hover:no-underline" href="/wall/reviews">Letters to Geloy</a>
           </nav>
         </header>
 
