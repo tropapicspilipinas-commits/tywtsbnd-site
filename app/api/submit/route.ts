@@ -1,53 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY!; // server-side only
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-export async function POST(req: NextRequest) {
-  // Read env (works locally + on Vercel)
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
+const ALLOWED = ['message', 'review', 'bright'] as const;
+type Kind = typeof ALLOWED[number];
 
-  if (!url || !key) {
-    return NextResponse.json({ error: 'env_missing' }, { status: 500 });
-  }
-
-  // Create client at request time (not at build time)
-  const supabase = createClient(url, key);
-
+export async function POST(req: Request) {
   try {
-    const { type, text } = await req.json();
+    const { type, text } = (await req.json()) as { type?: string; text?: string };
 
-    // Accept both our UI names and friendlier aliases
-    const allowed = ['message', 'review', 'prompt', 'letter'];
-    if (!allowed.includes(type)) {
-      return NextResponse.json({ error: 'invalid type' }, { status: 400 });
-    }
-    // Map aliases to the DB values we use
-    const dbType = type === 'prompt' ? 'message'
-                  : type === 'letter' ? 'review'
-                  : type;
-
-    const content = String(text || '').trim();
-    if (!content || content.length > 2000) {
-      return NextResponse.json({ error: 'invalid text' }, { status: 400 });
+    if (!text || typeof text !== 'string' || text.trim().length === 0 || text.length > 2000) {
+      return NextResponse.json({ error: 'Invalid text' }, { status: 400 });
     }
 
-    // RLS-safe: just insert; do NOT .select() the row (pending rows aren't readable)
+    if (!type || !ALLOWED.includes(type as Kind)) {
+      return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
+    }
+
     const { error } = await supabase
-      .from('submissions')
-      .insert({ type: dbType, content, status: 'pending' });
+      .from('items')
+      .insert({
+        content: text.trim(),
+        type,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Simple success response
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 });
   }
 }
