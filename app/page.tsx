@@ -93,19 +93,16 @@ export default function Home() {
           <h1 className="sr-only">Things you wanted to say but never did</h1>
 
           <div className="flex flex-col gap-2">
-            <div className="relative w-full max-w-[760px]">
-              <Image
-                src="/handdrawn/title_transparent.png"
+            {/* Handwritten title image (uses plain <img> to avoid size mismatch issues) */}
+            <div className="w-full max-w-[760px]">
+              <img
+                src="/handdrawn/title.png"
                 alt="Things you wanted to say but never did"
-                width={1691}
-                height={154}
-                priority
-                sizes="(max-width: 768px) 90vw, 760px"
                 className="h-auto w-full drop-shadow-[0_0_16px_rgba(255,255,255,0.35)]"
               />
             </div>
 
-            {/* Updated blurb */}
+            {/* Blurb */}
             <p className="max-w-2xl text-sm text-white/85 leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.25)]">
               Submissions are anonymous and may appear on the public walls after a quick review.
               Please be kind to yourself and others.
