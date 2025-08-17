@@ -15,6 +15,8 @@ type Deco = {
   jitterX: number;
   dur: number;
   delay: number;
+  twinkleDur: number;
+  twinkleDelay: number;
 };
 
 export default function ReviewsWall() {
@@ -23,6 +25,7 @@ export default function ReviewsWall() {
   const [shuffleKey, setShuffleKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Fetch approved "review" posts
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -38,42 +41,59 @@ export default function ReviewsWall() {
     })();
   }, []);
 
+  // Background image (unique to Reviews wall)
+  const Background = () => (
+    <>
+      <div
+        className="fixed inset-0 -z-20 bg-cover bg-center"
+        style={{ backgroundImage: 'url(/bg/reviews-sky.jpg)' }}
+      />
+      <div className="fixed inset-0 -z-10 bg-black/60" />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,transparent_0%,transparent_55%,rgba(0,0,0,0.35)_80%,rgba(0,0,0,0.6)_100%)]" />
+    </>
+  );
+
+  // Responsive grid layout (even, non-overlapping)
   const layout = useMemo(() => {
     const W = containerRef.current?.clientWidth ?? 960;
     let cols = 4;
-    let gap = 24;
-    if (W < 640) { cols = 2; gap = 16; }
-    else if (W < 1024) { cols = 3; gap = 20; }
+    let gap = 28;
+    if (W < 640) { cols = 2; gap = 18; }
+    else if (W < 1024) { cols = 3; gap = 22; }
     const colW = Math.floor((W - gap * (cols - 1)) / cols);
     const rowUnit = 8;
     return { W, cols, gap, colW, rowUnit };
   }, [containerRef.current?.clientWidth, shuffleKey]);
 
+  // Estimate height for each text block (no boxes), include timestamp line
   const estimateHeight = (text: string, width: number) => {
     const charsPerLine = Math.max(18, Math.floor(width / 7));
     const lines = Math.max(2, Math.ceil(text.length / charsPerLine));
-    const lineH = 20;
-    const padding = 14 + 14;
+    const lineH = 22;
     const timeLine = 16;
-    const minH = 64;
-    const maxH = 520;
-    return Math.min(maxH, Math.max(minH, lines * lineH + padding + timeLine));
+    const minH = 52;
+    const maxH = 560;
+    return Math.min(maxH, Math.max(minH, lines * lineH + timeLine));
   };
 
+  // Per-item motion / glow timings
   const deco = useMemo<Record<string, Deco>>(() => {
-    const rng = () => Math.random();
+    const rnd = () => Math.random();
     const out: Record<string, Deco> = {};
     for (const it of items) {
       out[it.id] = {
-        rot: (rng() * 3 - 1.5),
-        jitterX: Math.round(rng() * 10 - 5),
-        dur: 6 + rng() * 4,
-        delay: rng() * 5,
+        rot: (rnd() * 2.4 - 1.2),
+        jitterX: Math.round(rnd() * 12 - 6),
+        dur: 7 + rnd() * 5,
+        delay: rnd() * 6,
+        twinkleDur: 3.5 + rnd() * 3.5,
+        twinkleDelay: rnd() * 5,
       };
     }
     return out;
   }, [items, shuffleKey]);
 
+  // Grid row spans prevent overlap
   const spans = useMemo(() => {
     return items.map((it) => {
       const h = estimateHeight(it.content, layout.colW);
@@ -82,6 +102,7 @@ export default function ReviewsWall() {
     });
   }, [items, layout.colW, layout.rowUnit]);
 
+  // Re-layout when window resizes (keeps things tidy)
   useEffect(() => {
     const onResize = () => setShuffleKey((k) => k + 1);
     window.addEventListener('resize', onResize);
@@ -89,27 +110,32 @@ export default function ReviewsWall() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className="mx-auto max-w-5xl px-4 py-6">
-        <header className="mb-4 flex items-center justify-between gap-3">
+    <main className="min-h-screen text-white">
+      <Background />
+
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <header className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">Public Wall · Letters to Geloy</h1>
-            <nav className="mt-1 text-sm text-neutral-600">
-              <a className="underline hover:no-underline" href="/">Home</a>
+            <h1 className="text-2xl font-semibold drop-shadow-[0_0_14px_rgba(255,255,255,0.35)]">
+              Public Wall · Letters to Geloy
+            </h1>
+            <nav className="mt-1 text-sm text-white/80">
+              <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/">Home</a>
               <span className="mx-2">•</span>
-              <a className="underline hover:no-underline" href="/wall/messages">Unspoken words</a>
+              <a className="underline decoration-white/50 underline-offset-4 hover:decoration-white" href="/wall/messages">Unspoken words</a>
             </nav>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShuffleKey((k) => k + 1)}
-              className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm hover:bg-neutral-100"
+              className="rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-sm shadow-sm hover:bg-white/15 backdrop-blur"
+              title="Shuffle layout"
             >
               Shuffle layout
             </button>
             <a
               href="/wall/reviews"
-              className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-sm shadow-sm hover:bg-neutral-100"
+              className="rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-sm shadow-sm hover:bg-white/15 backdrop-blur"
               title="Refresh posts"
             >
               Refresh posts
@@ -117,10 +143,10 @@ export default function ReviewsWall() {
           </div>
         </header>
 
-        {loading && <p className="text-neutral-600">Loading…</p>}
+        {loading && <p className="text-white/80">Loading…</p>}
 
         {(!loading && items.length === 0) ? (
-          <p className="text-neutral-600">No approved posts yet for this wall.</p>
+          <p className="text-white/80">No approved posts yet for this wall.</p>
         ) : (
           <div
             ref={containerRef}
@@ -138,21 +164,30 @@ export default function ReviewsWall() {
               return (
                 <article
                   key={it.id}
-                  className="relative"
+                  className="relative will-change-transform"
                   style={{
                     gridRowEnd: `span ${s.span}`,
                     transform: `translateX(${d.jitterX}px) rotate(${d.rot}deg)`,
                   }}
                 >
                   <div
-                    className="floaty"
-                    style={{ animationDuration: `${d.dur}s`, animationDelay: `${d.delay}s` }}
+                    className="floaty twinkle select-text"
+                    style={{
+                      animationDuration: `${d.dur}s, ${d.twinkleDur}s`,
+                      animationDelay: `${d.delay}s, ${d.twinkleDelay}s`,
+                    }}
                   >
-                    <div className="whitespace-pre-wrap text-[13.5px] leading-relaxed sm:text-sm"
-                         style={{ textShadow: '0 0 1px rgba(0,0,0,0.08)' }}>
+                    <div
+                      className="whitespace-pre-wrap text-[14px] leading-relaxed sm:text-[15px]"
+                      style={{
+                        textShadow:
+                          '0 0 6px rgba(255,255,255,0.85), 0 0 12px rgba(255,255,255,0.55), 0 0 24px rgba(180,220,255,0.35)',
+                      }}
+                    >
                       {it.content}
                     </div>
-                    <div className="mt-1 text-[10px] text-neutral-500">
+                    <div className="mt-1 text-[10px] text-white/70"
+                         style={{ textShadow: '0 0 8px rgba(255,255,255,0.45)' }}>
                       {new Date(it.created_at).toLocaleString()}
                     </div>
                   </div>
@@ -163,16 +198,29 @@ export default function ReviewsWall() {
         )}
       </div>
 
+      {/* animations */}
       <style jsx global>{`
         .floaty {
           animation-name: bob;
           animation-timing-function: ease-in-out;
           animation-iteration-count: infinite;
         }
+        .twinkle {
+          animation-name: bob, twinkle;
+          animation-timing-function: ease-in-out, linear;
+          animation-iteration-count: infinite, infinite;
+        }
         @keyframes bob {
           0%   { transform: translateY(0px); }
-          50%  { transform: translateY(-6px); }
+          50%  { transform: translateY(-8px); }
           100% { transform: translateY(0px); }
+        }
+        @keyframes twinkle {
+          0%   { opacity: 0.92; filter: drop-shadow(0 0 2px rgba(255,255,255,0.5)); }
+          25%  { opacity: 1;    filter: drop-shadow(0 0 4px rgba(255,255,255,0.6)); }
+          50%  { opacity: 0.88; filter: drop-shadow(0 0 6px rgba(200,220,255,0.55)); }
+          75%  { opacity: 1;    filter: drop-shadow(0 0 4px rgba(255,255,255,0.6)); }
+          100% { opacity: 0.92; filter: drop-shadow(0 0 2px rgba(255,255,255,0.5)); }
         }
       `}</style>
     </main>
