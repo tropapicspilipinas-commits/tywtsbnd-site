@@ -39,7 +39,7 @@ export default function MessagesWall() {
           <nav className="mt-2 text-sm text-neutral-600">
             <a className="underline hover:no-underline" href="/">Home</a>
             <span className="mx-2">•</span>
-            <a className="underline hover:no-underline" href="/wall/reviews">Go to Letters Wall</a>
+            <a className="underline hover:no-underline" href="/wall/reviews">Letters to Geloy</a>
           </nav>
         </header>
 

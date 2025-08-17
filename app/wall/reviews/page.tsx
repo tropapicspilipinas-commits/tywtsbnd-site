@@ -39,7 +39,7 @@ export default function ReviewsWall() {
           <nav className="mt-2 text-sm text-neutral-600">
             <a className="underline hover:no-underline" href="/">Home</a>
             <span className="mx-2">•</span>
-            <a className="underline hover:no-underline" href="/wall/messages">Go to Unspoken Words Wall</a>
+            <a className="underline hover:no-underline" href="/wall/messages">Unspoken words</a>
           </nav>
         </header>
 
