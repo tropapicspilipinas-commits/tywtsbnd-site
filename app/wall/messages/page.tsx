@@ -14,14 +14,7 @@ type Placed = {
   id: string;
   content: string;
   created_at: string;
-  x: number;   // px
-  y: number;   // px
-  w: number;   // px
-  h: number;   // px (estimated)
-  r: number;   // deg
-  z: number;
-  dur: number; // s
-  delay: number; // s
+  x: number; y: number; w: number; h: number; r: number; z: number; dur: number; delay: number;
 };
 
 export default function MessagesWall() {
@@ -32,7 +25,7 @@ export default function MessagesWall() {
   const [shuffleKey, setShuffleKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 1) Fetch approved messages
+  // ---- Fetch approved messages
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -48,96 +41,191 @@ export default function MessagesWall() {
     })();
   }, []);
 
-  // Helpers
+  // ---- Helpers
+  const rand = (a: number, b: number) => a + Math.random() * (b - a);
+
   const estimateHeight = (text: string, width: number) => {
-    // Approx character width ~7px at our font size
+    // Approx: avg char ~7px width at our font size; add padding + timestamp line
     const CPL = Math.max(16, Math.floor(width / 7));
     const lines = Math.max(2, Math.ceil(text.length / CPL));
-    const lineH = 20; // px
-    const padding = 24 + 16; // inner padding + meta line
-    const minH = 90;
-    const maxH = 420;
+    const lineH = 20;
+    const padding = 24 + 16;
+    const minH = 96;
+    const maxH = 460;
     return Math.min(maxH, Math.max(minH, lines * lineH + padding));
   };
 
-  const chooseWidth = (isNarrow: boolean) => {
-    const rand = (a: number, b: number) => a + Math.random() * (b - a);
-    return isNarrow ? rand(180, 240) : rand(220, 340);
-  };
+  const chooseWidth = (isNarrow: boolean) => (isNarrow ? rand(180, 240) : rand(220, 340));
 
-  // 2) Lay out collision-free when items or shuffle change & container measured
+  // Poisson-disc sampling (Bridson) for evenly spaced anchor points
+  function poissonDisc(width: number, height: number, r: number, k = 30) {
+    const cell = r / Math.SQRT2;
+    const gridW = Math.ceil(width / cell);
+    const gridH = Math.ceil(height / cell);
+    const grid: (null | [number, number])[] = Array(gridW * gridH).fill(null);
+    const points: [number, number][] = [];
+    const active: [number, number][] = [];
+
+    const gx = (x: number) => Math.floor(x / cell);
+    const gy = (y: number) => Math.floor(y / cell);
+    const gi = (x: number, y: number) => gy(y) * gridW + gx(x);
+
+    function farEnough(x: number, y: number) {
+      const gxi = gx(x);
+      const gyi = gy(y);
+      for (let yy = Math.max(gyi - 2, 0); yy <= Math.min(gyi + 2, gridH - 1); yy++) {
+        for (let xx = Math.max(gxi - 2, 0); xx <= Math.min(gxi + 2, gridW - 1); xx++) {
+          const p = grid[yy * gridW + xx];
+          if (!p) continue;
+          const dx = p[0] - x;
+          const dy = p[1] - y;
+          if (dx * dx + dy * dy < r * r) return false;
+        }
+      }
+      return true;
+    }
+
+    // seed
+    const seed: [number, number] = [Math.random() * width, Math.random() * height];
+    points.push(seed);
+    active.push(seed);
+    grid[gi(seed[0], seed[1])] = seed;
+
+    while (active.length) {
+      const idx = Math.floor(Math.random() * active.length);
+      const origin = active[idx];
+      let found = false;
+
+      for (let i = 0; i < k; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const m = r * (1 + Math.random()); // between r and 2r
+        const nx = origin[0] + Math.cos(angle) * m;
+        const ny = origin[1] + Math.sin(angle) * m;
+
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height && farEnough(nx, ny)) {
+          const p: [number, number] = [nx, ny];
+          points.push(p);
+          active.push(p);
+          grid[gi(nx, ny)] = p;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        active.splice(idx, 1);
+      }
+    }
+
+    return points;
+  }
+
+  // ---- Compute sizes, height, anchors, and collision-free placement
   useEffect(() => {
     if (!containerRef.current) return;
-    const containerW = containerRef.current.clientWidth || 900;
-    const isNarrow = containerW < 640;
+
+    const W = containerRef.current.clientWidth || 900;
+    const isNarrow = W < 640;
 
     // Precompute widths/heights
-    const withSize = items.map((it) => {
+    const sized = items.map((it) => {
       const w = chooseWidth(isNarrow);
       const h = estimateHeight(it.content, w);
       return { it, w, h };
     });
 
-    // Compute canvas height from total area (with slack)
-    const totalArea = withSize.reduce((s, x) => s + x.w * x.h, 0);
-    const base = Math.max(900, typeof window !== 'undefined' ? window.innerHeight : 900);
-    const needed = Math.ceil(totalArea / containerW * 1.25);
-    const height = Math.max(base, Math.min(32000, needed)); // cap to be safe
-    setCanvasH(height);
+    // Choose canvas height from area (with slack)
+    const totalArea = sized.reduce((s, x) => s + x.w * x.h, 0);
+    const baseH = Math.max(900, typeof window !== 'undefined' ? window.innerHeight : 900);
+    const neededH = Math.ceil(totalArea / W * 1.35); // a bit more slack for even spacing
+    const H = Math.max(baseH, Math.min(48000, neededH));
+    setCanvasH(H);
 
-    // Collision-free random placement
-    const placedOut: Placed[] = [];
-    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+    // Pick Poisson radius based on average note size (smaller -> denser)
+    const avgW = sized.reduce((s, x) => s + x.w, 0) / Math.max(1, sized.length || 1);
+    const avgH = sized.reduce((s, x) => s + x.h, 0) / Math.max(1, sized.length || 1);
+    const r = Math.max(40, Math.min(avgW, avgH) * 0.8);
+
+    // Generate anchors; if too few, gently reduce r and retry once
+    let anchors = poissonDisc(W, H, r);
+    if (anchors.length < sized.length) anchors = poissonDisc(W, H, Math.max(28, r * 0.85));
+
+    // Shuffle anchors for randomness
+    anchors.sort(() => Math.random() - 0.5);
+
+    // Collision check
     const intersects = (a: Placed, b: Placed) =>
-      !(
-        a.x + a.w <= b.x ||
-        b.x + b.w <= a.x ||
-        a.y + a.h <= b.y ||
-        b.y + b.h <= a.y
-      );
+      !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
 
-    for (const row of withSize) {
-      const rDeg = rand(-2.5, 2.5);
-      const z = Math.floor(rand(1, 5));
-      const dur = rand(6, 10);
-      const delay = rand(0, 5);
+    const margin = 8;
+    const out: Placed[] = [];
 
-      // Try many random positions within bounds, avoid overlaps
-      const maxTries = 300;
+    for (const row of sized) {
+      // Try anchors first
       let placedOne: Placed | null = null;
-      for (let t = 0; t < maxTries; t++) {
-        const margin = 8;
-        const x = Math.floor(rand(margin, Math.max(margin, containerW - row.w - margin)));
-        const y = Math.floor(rand(margin, Math.max(margin, height - row.h - margin)));
+
+      for (let i = 0; i < anchors.length; i++) {
+        const [cx, cy] = anchors[i];
+        // center rect on the anchor, but clamp to bounds
+        const x = Math.max(margin, Math.min(W - row.w - margin, Math.round(cx - row.w / 2)));
+        const y = Math.max(margin, Math.min(H - row.h - margin, Math.round(cy - row.h / 2)));
+
         const candidate: Placed = {
           id: row.it.id,
           content: row.it.content,
           created_at: row.it.created_at,
-          x, y, w: row.w, h: row.h, r: rDeg, z, dur, delay,
+          x, y, w: row.w, h: row.h,
+          r: rand(-2.5, 2.5),
+          z: Math.floor(rand(1, 5)),
+          dur: rand(6, 10),
+          delay: rand(0, 5),
         };
-        // Check overlap against already placed
-        if (!placedOut.some((p) => intersects(candidate, p))) {
+
+        if (!out.some((p) => intersects(candidate, p))) {
           placedOne = candidate;
+          anchors.splice(i, 1); // consume this anchor
+          // also remove anchors too close to avoid crowding
+          anchors = anchors.filter(([ax, ay]) => {
+            const dx = ax - (x + row.w / 2);
+            const dy = ay - (y + row.h / 2);
+            return dx * dx + dy * dy > (r * 0.75) * (r * 0.75);
+          });
           break;
         }
       }
 
-      // Fallback: simple stacking if space is dense
+      // Fallback: random tries
       if (!placedOne) {
-        const y = placedOut.reduce((acc, p) => Math.max(acc, p.y + p.h + 12), 8);
+        const maxTries = 500;
+        for (let t = 0; t < maxTries && !placedOne; t++) {
+          const x = Math.floor(rand(margin, Math.max(margin, W - row.w - margin)));
+          const y = Math.floor(rand(margin, Math.max(margin, H - row.h - margin)));
+          const cand: Placed = {
+            id: row.it.id, content: row.it.content, created_at: row.it.created_at,
+            x, y, w: row.w, h: row.h, r: rand(-2, 2), z: 1, dur: rand(6, 10), delay: rand(0, 5),
+          };
+          if (!out.some((p) => intersects(cand, p))) placedOne = cand;
+        }
+      }
+
+      // Last fallback: stacked
+      if (!placedOne) {
+        const y = out.reduce((acc, p) => Math.max(acc, p.y + p.h + 12), margin);
         placedOne = {
           id: row.it.id, content: row.it.content, created_at: row.it.created_at,
-          x: 8, y: Math.min(y, height - row.h - 8), w: row.w, h: row.h, r: 0, z: 1, dur, delay,
+          x: margin, y: Math.min(y, H - row.h - margin), w: row.w, h: row.h, r: 0, z: 1,
+          dur: rand(6, 10), delay: rand(0, 5),
         };
       }
-      placedOut.push(placedOne);
+
+      out.push(placedOne);
     }
 
-    setPlaced(placedOut);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setPlaced(out);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, shuffleKey]);
 
-  // Re-run layout on resize (simple)
+  // Re-layout on resize
   useEffect(() => {
     const onResize = () => setShuffleKey((k) => k + 1);
     window.addEventListener('resize', onResize);
