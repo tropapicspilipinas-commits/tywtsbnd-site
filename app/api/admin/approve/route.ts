@@ -2,16 +2,13 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { requireAdmin } from '../../../../lib/adminAuth';
 
-export async function POST(req) {
+export const runtime = 'nodejs';
+
+export async function POST(req: Request) {
   const ok = await requireAdmin(req);
   if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let id;
-  try {
-    const body = await req.json();
-    id = body?.id;
-  } catch {}
-
+  const { id } = await req.json().catch(() => ({}));
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const { data, error } = await supabaseAdmin
@@ -24,3 +21,5 @@ export async function POST(req) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, submission: data });
 }
+
+export const __ensureModule = true;

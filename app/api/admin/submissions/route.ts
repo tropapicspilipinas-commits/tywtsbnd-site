@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { requireAdmin } from '../../../../lib/adminAuth';
 
-export async function GET(req) {
+export const runtime = 'nodejs';
+
+export async function GET(req: Request) {
   const ok = await requireAdmin(req);
   if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const url = new URL(req.url);
-  const status = url.searchParams.get('status'); // 'pending' | 'approved' | 'rejected'
-  const type = url.searchParams.get('type');     // 'review' | 'message'
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status'); // 'pending' | 'approved' | 'rejected'
+  const type = searchParams.get('type');     // 'review' | 'message'
 
   let query = supabaseAdmin
     .from('submissions')
@@ -21,5 +23,7 @@ export async function GET(req) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ submissions: data || [] });
+  return NextResponse.json({ submissions: data ?? [] });
 }
+
+export const __ensureModule = true;
