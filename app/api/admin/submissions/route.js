@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
-import { requireAdmin } from '../../../../lib/adminAuth';
+import { getAdminClient } from '@/lib/supabaseAdmin';
+import { requireAdmin } from '@/lib/adminAuth';
 
 export async function GET(req) {
   const ok = await requireAdmin(req);
   if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const supabaseAdmin = getAdminClient();
 
   const url = new URL(req.url);
   const status = url.searchParams.get('status'); // 'pending' | 'approved' | 'rejected'

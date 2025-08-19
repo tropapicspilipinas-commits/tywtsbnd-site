@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { buildSessionToken, COOKIE_NAME } from '../../../../lib/adminAuth';
+import { buildSessionToken, COOKIE_NAME } from '@/lib/adminAuth';
 
 export async function POST(req) {
   let password = '';
@@ -24,7 +24,7 @@ export async function POST(req) {
     secure: true,
     sameSite: 'lax',
     path: '/',
-    maxAge: maxAgeSeconds,
+    maxAge: maxAgeSeconds
   });
   return res;
 }

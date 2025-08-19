@@ -9,10 +9,6 @@ function getSecret() {
   return new TextEncoder().encode(s);
 }
 
-/**
- * Create a signed JWT for the admin session.
- * Route handlers will attach it to the response cookie.
- */
 export async function buildSessionToken() {
   const ttlHours = Number(process.env.ADMIN_SESSION_TTL_HOURS || '12');
   const exp = Math.floor(Date.now() / 1000) + ttlHours * 60 * 60;
@@ -23,9 +19,6 @@ export async function buildSessionToken() {
   return { token, maxAgeSeconds: ttlHours * 60 * 60 };
 }
 
-/**
- * Verify the admin cookie from the incoming Request.
- */
 export async function requireAdmin(req: Request) {
   const cookieHeader = req.headers.get('cookie') || '';
   const match = cookieHeader
