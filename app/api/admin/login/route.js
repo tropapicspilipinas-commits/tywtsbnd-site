@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { buildSessionToken, COOKIE_NAME } from '@/lib/adminAuth';
 
+export const runtime = 'nodejs';
+
 export async function POST(req) {
   let password = '';
   try {
@@ -21,7 +23,7 @@ export async function POST(req) {
   const res = NextResponse.json({ ok: true });
   res.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
     maxAge: maxAgeSeconds
