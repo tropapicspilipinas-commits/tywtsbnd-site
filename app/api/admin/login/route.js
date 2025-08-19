@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { setAdminSession } from '../../../../lib/adminAuth';
+import { buildSessionToken, COOKIE_NAME } from '../../../../lib/adminAuth';
 
 export async function POST(req) {
   let password = '';
@@ -16,6 +16,15 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
   }
 
-  await setAdminSession();
-  return NextResponse.json({ ok: true });
+  const { token, maxAgeSeconds } = await buildSessionToken();
+
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: maxAgeSeconds,
+  });
+  return res;
 }
