@@ -28,7 +28,7 @@ export default function AdminDashboardPage() {
       credentials: 'include',
     });
     if (!res.ok) {
-      // Session expired or not logged in
+      // If session expired, go to login
       window.location.href = '/admin/login';
       return;
     }
@@ -48,6 +48,7 @@ export default function AdminDashboardPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
       credentials: 'include',
+      cache: 'no-store',
     });
     if (!res.ok) {
       alert('Action failed. Please log in again.');
@@ -58,7 +59,7 @@ export default function AdminDashboardPage() {
   }
 
   async function logout() {
-    await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
+    await fetch('/api/admin/logout', { method: 'POST', credentials: 'include', cache: 'no-store' });
     window.location.href = '/admin/login';
   }
 

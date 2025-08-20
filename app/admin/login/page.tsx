@@ -16,6 +16,7 @@ export default function AdminLoginPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
       credentials: 'include',
+      cache: 'no-store',
     });
     setBusy(false);
     if (!res.ok) {
@@ -23,8 +24,8 @@ export default function AdminLoginPage() {
       setError(j.error ?? 'Login failed');
       return;
     }
-    // Hard reload so every request starts with the cookie
-    window.location.href = '/admin';
+    // Go directly to the dashboard after cookie is set
+    window.location.href = '/admin/dashboard';
   }
 
   return (
@@ -48,9 +49,7 @@ export default function AdminLoginPage() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-      <p className="mt-3 text-xs opacity-70">
-        You’ll be redirected to the dashboard after login.
-      </p>
+      <p className="mt-3 text-xs opacity-70">You’ll be redirected to the dashboard after login.</p>
     </main>
   );
 }

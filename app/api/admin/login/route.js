@@ -20,14 +20,13 @@ export async function POST(req) {
 
   const { token, maxAgeSeconds } = await buildSessionToken();
 
-  const res = NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
   res.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    // no domain → host-only cookie (works for your current host)
-    maxAge: maxAgeSeconds
+    maxAge: maxAgeSeconds,
   });
   return res;
 }
