@@ -26,6 +26,7 @@ export async function POST(req) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
+    // no domain → host-only cookie (works for your current host)
     maxAge: maxAgeSeconds
   });
   return res;
