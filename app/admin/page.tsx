@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { verifyAdminToken, COOKIE_NAME } from '@/lib/adminAuth';
-import AdminDashboardClient from './AdminDashboardClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,5 +10,6 @@ export default async function AdminPage() {
   if (!ok) {
     redirect('/admin/login');
   }
-  return <AdminDashboardClient />;
+  // If logged in, go to the dashboard page (no client import here)
+  redirect('/admin/dashboard');
 }
