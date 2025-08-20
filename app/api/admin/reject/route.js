@@ -6,7 +6,7 @@ import { getAdminClient } from '@/lib/supabaseAdmin';
 export const runtime = 'nodejs';
 
 export async function POST(req) {
-  const token = cookies().get(COOKIE_NAME)?.value || null;
+  const token = (await cookies()).get(COOKIE_NAME)?.value || null;
   const ok = await verifyAdminToken(token);
   if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -28,5 +28,9 @@ export async function POST(req) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, submission: data });
+
+  return NextResponse.json(
+    { ok: true, submission: data },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 }

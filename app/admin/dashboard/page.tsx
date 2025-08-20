@@ -17,9 +17,11 @@ export default function AdminDashboardPage() {
     useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [typeFilter, setTypeFilter] =
     useState<'all' | 'review' | 'message'>('all');
+  const [error, setError] = useState<string | null>(null);
 
   async function fetchList() {
     setLoading(true);
+    setError(null);
     const qs = new URLSearchParams();
     if (statusFilter !== 'all') qs.set('status', statusFilter);
     if (typeFilter !== 'all') qs.set('type', typeFilter);
@@ -27,11 +29,23 @@ export default function AdminDashboardPage() {
       cache: 'no-store',
       credentials: 'include',
     });
+
     if (!res.ok) {
-      // If session expired, go to login
-      window.location.href = '/admin/login';
+      if (res.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
+      let msg = res.statusText || 'Request failed';
+      try {
+        const j = await res.json();
+        if (j?.error) msg = j.error;
+      } catch {}
+      setError(`Error ${res.status}: ${msg}`);
+      setItems([]);
+      setLoading(false);
       return;
     }
+
     const data = await res.json();
     setItems(data.submissions ?? []);
     setLoading(false);
@@ -43,6 +57,7 @@ export default function AdminDashboardPage() {
   }, [statusFilter, typeFilter]);
 
   async function act(id: string, action: 'approve' | 'reject') {
+    setError(null);
     const res = await fetch(`/api/admin/${action}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -51,8 +66,16 @@ export default function AdminDashboardPage() {
       cache: 'no-store',
     });
     if (!res.ok) {
-      alert('Action failed. Please log in again.');
-      window.location.href = '/admin/login';
+      if (res.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
+      let msg = res.statusText || 'Action failed';
+      try {
+        const j = await res.json();
+        if (j?.error) msg = j.error;
+      } catch {}
+      setError(`Error ${res.status}: ${msg}`);
       return;
     }
     await fetchList();
@@ -101,6 +124,15 @@ export default function AdminDashboardPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          {error} — click{' '}
+          <button onClick={fetchList} className="underline">
+            retry
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <p>Loading…</p>
       ) : items.length === 0 ? (
@@ -110,7 +142,9 @@ export default function AdminDashboardPage() {
           {items.map((s) => (
             <li key={s.id} className="rounded-xl border p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs opacity-70">{new Date(s.created_at).toLocaleString()}</span>
+                <span className="text-xs opacity-70">
+                  {new Date(s.created_at).toLocaleString()}
+                </span>
                 <span
                   className={`text-xs uppercase tracking-wide ${
                     s.status === 'pending'
