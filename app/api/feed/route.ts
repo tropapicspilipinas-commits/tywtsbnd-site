@@ -4,15 +4,12 @@ import { createClient } from '@supabase/supabase-js';
 const ALLOWED = ['message', 'review', 'bright'] as const;
 type Kind = (typeof ALLOWED)[number];
 
-function getSupabaseServer() {
+function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
-  // Use service role for predictable reads under RLS; fall back to anon if needed
-  const key = service || anon;
-  if (!key) throw new Error('Missing Supabase key (SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY)');
-  return createClient(url, key, { auth: { persistSession: false } });
+  if (!service) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
+  return createClient(url, service, { auth: { persistSession: false } });
 }
 
 export const runtime = 'nodejs';
@@ -22,7 +19,7 @@ export const revalidate = 0;
 // GET /api/feed?type=message|review|bright&limit=200
 export async function GET(req: Request) {
   try {
-    const supabase = getSupabaseServer();
+    const supabase = getSupabaseAdmin();
 
     const url = new URL(req.url);
     const typeParam = url.searchParams.get('type');

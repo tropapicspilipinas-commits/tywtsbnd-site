@@ -7,19 +7,15 @@ type Kind = (typeof ALLOWED)[number];
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
-  // Prefer service role on server for reliable writes; fall back to anon in dev
-  const key = service || anon;
-  if (!key) throw new Error('Missing Supabase key (SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY)');
-  return createClient(url, key, { auth: { persistSession: false } });
+  if (!service) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY'); // server key required
+  return createClient(url, service, { auth: { persistSession: false } });
 }
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
-    // Accept either { text } or { content } from callers
     const body = (await req.json().catch(() => ({}))) as {
       type?: string;
       text?: string;
@@ -38,7 +34,6 @@ export async function POST(req: Request) {
     }
 
     const supabase = getSupabaseAdmin();
-
     const { data, error } = await supabase
       .from('items')
       .insert({ content: text, type, status: 'pending' })
