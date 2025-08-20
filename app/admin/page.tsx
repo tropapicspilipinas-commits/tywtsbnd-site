@@ -5,11 +5,15 @@ import { verifyAdminToken, COOKIE_NAME } from '@/lib/adminAuth';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  const token = cookies().get(COOKIE_NAME)?.value || null;
+  // In your setup, cookies() is async — await it:
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value || null;
+
   const ok = await verifyAdminToken(token);
   if (!ok) {
     redirect('/admin/login');
   }
-  // If logged in, go to the dashboard page (no client import here)
+
+  // Logged in → send to the dashboard UI
   redirect('/admin/dashboard');
 }
