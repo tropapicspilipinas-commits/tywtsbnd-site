@@ -19,14 +19,9 @@ export async function buildSessionToken() {
   return { token, maxAgeSeconds: ttlHours * 60 * 60 };
 }
 
-export async function requireAdmin(req: Request) {
-  const cookieHeader = req.headers.get('cookie') || '';
-  const match = cookieHeader
-    .split(';')
-    .map((c) => c.trim())
-    .find((c) => c.startsWith(COOKIE_NAME + '='));
-  if (!match) return false;
-  const token = match.slice((COOKIE_NAME + '=').length);
+/** Verify a JWT string (from cookie). */
+export async function verifyAdminToken(token: string | null | undefined) {
+  if (!token) return false;
   try {
     await jwtVerify(token, getSecret());
     return true;

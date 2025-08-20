@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabaseAdmin';
 import { requireAdmin } from '@/lib/adminAuth';
 
+export const runtime = 'nodejs';
+
 export async function POST(req) {
   const ok = await requireAdmin(req);
   if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

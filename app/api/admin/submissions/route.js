@@ -1,29 +1,32 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifyAdminToken, COOKIE_NAME } from '@/lib/adminAuth';
 import { getAdminClient } from '@/lib/supabaseAdmin';
-import { requireAdmin } from '@/lib/adminAuth';
 
 export const runtime = 'nodejs';
 
-export async function GET(req) {
-  const ok = await requireAdmin(req);
+export async function POST(req) {
+  const token = cookies().get(COOKIE_NAME)?.value || null;
+  const ok = await verifyAdminToken(token);
   if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const supabaseAdmin = getAdminClient();
 
-  const url = new URL(req.url);
-  const status = url.searchParams.get('status'); // 'pending' | 'approved' | 'rejected'
-  const type = url.searchParams.get('type');     // 'review' | 'message'
+  let id;
+  try {
+    const body = await req.json();
+    id = body?.id;
+  } catch {}
 
-  let query = supabaseAdmin
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+  const { data, error } = await supabaseAdmin
     .from('submissions')
-    .select('id, type, content, status, created_at')
-    .order('created_at', { ascending: false })
-    .limit(200);
+    .update({ status: 'approved' })
+    .eq('id', id)
+    .select('id, status')
+    .single();
 
-  if (status) query = query.eq('status', status);
-  if (type && (type === 'review' || type === 'message')) query = query.eq('type', type);
-
-  const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ submissions: data || [] });
+  return NextResponse.json({ ok: true, submission: data });
 }
