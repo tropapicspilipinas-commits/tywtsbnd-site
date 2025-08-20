@@ -20,7 +20,7 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
 
   async function checkAuth() {
-    const res = await fetch('/api/admin/me', { cache: 'no-store' });
+    const res = await fetch('/api/admin/me', { cache: 'no-store', credentials: 'include' });
     setAuthed(res.ok);
   }
 
@@ -31,6 +31,7 @@ export default function AdminPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
+      credentials: 'include',
     });
     setBusy(false);
     if (!res.ok) {
@@ -38,15 +39,13 @@ export default function AdminPage() {
       alert(j.error ?? 'Login failed');
       return;
     }
-    setPassword('');
-    setAuthed(true);
-    fetchList();
+    // Hard reload so every next request has the cookie from the very first render
+    window.location.href = '/admin';
   }
 
   async function logout() {
-    await fetch('/api/admin/logout', { method: 'POST' });
-    setAuthed(false);
-    setItems([]);
+    await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' });
+    window.location.href = '/admin'; // return to login cleanly
   }
 
   async function fetchList() {
@@ -54,7 +53,10 @@ export default function AdminPage() {
     const qs = new URLSearchParams();
     if (statusFilter !== 'all') qs.set('status', statusFilter);
     if (typeFilter !== 'all') qs.set('type', typeFilter);
-    const res = await fetch(`/api/admin/submissions?${qs.toString()}`, { cache: 'no-store' });
+    const res = await fetch(`/api/admin/submissions?${qs.toString()}`, {
+      cache: 'no-store',
+      credentials: 'include',
+    });
     if (!res.ok) {
       setAuthed(false);
       setLoading(false);
@@ -79,6 +81,7 @@ export default function AdminPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
+      credentials: 'include',
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -103,7 +106,7 @@ export default function AdminPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border rounded px-3 py-2"
           />
-        <button
+          <button
             type="submit"
             disabled={busy || !password}
             className="w-full rounded-lg bg-black text-white px-3 py-2 disabled:opacity-40"
@@ -160,10 +163,17 @@ export default function AdminPage() {
             <li key={s.id} className="rounded-xl border p-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs opacity-70">{new Date(s.created_at).toLocaleString()}</span>
-                <span className={`text-xs uppercase tracking-wide ${
-                  s.status === 'pending' ? 'text-amber-600' :
-                  s.status === 'approved' ? 'text-green-600' : 'text-red-600'
-                }`}>{s.status}</span>
+                <span
+                  className={`text-xs uppercase tracking-wide ${
+                    s.status === 'pending'
+                      ? 'text-amber-600'
+                      : s.status === 'approved'
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }`}
+                >
+                  {s.status}
+                </span>
               </div>
               <div className="mt-1 text-xs opacity-60">Type: {s.type ?? '—'}</div>
               <p className="mt-2 whitespace-pre-wrap">{s.content ?? ''}</p>
